@@ -49,6 +49,7 @@
     <div v-if="allInputsOk && errorMessage == ''">
       <PolarPlot v-bind:isElevation="isElevationPlot" 
         v-bind:angles="angles" v-bind:values="[horizontalValues, verticalValues, totalValues]" v-bind:maxValue="maxFieldDbi" v-bind:azimuth="Number(azimuthText)"
+        radiiSuffix=" dBi"
         width="800" height="400"/>
 
       <pre>

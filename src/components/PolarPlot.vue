@@ -65,6 +65,9 @@ export default class PolarPlot extends Vue {
     @Prop()
     readonly height!: number;
 
+    @Prop()
+    readonly radiiSuffix!: string;
+
     readonly radius = Math.min(this.width, this.height) / 2 - 30;
 
     get viewBox(): string { return `${-this.width/3} ${-this.height/2} ${this.width} ${this.height}`; }
@@ -113,7 +116,7 @@ export default class PolarPlot extends Vue {
             .attr("y", (d) => { return -this.scaleR(d) - 4; })
             .attr("transform", "rotate(15)")
             .style("text-anchor", "middle")
-            .text(function(d) { return d; });
+            .text((d) => { return d + this.radiiSuffix; });
 
         return gr.html();
     }
