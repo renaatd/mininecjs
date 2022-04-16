@@ -1,6 +1,6 @@
 # MininecJS - MiniNEC in the browser
 
-This project uses TypeScript / Vue 2 / Vue CLI.
+This project uses TypeScript / Vue 3 / Vite.
 
 The actual antenna calculations are done by a C++ library compiled to WebAssembly, and included as a JavaScript blob.
 
@@ -9,12 +9,12 @@ The actual antenna calculations are done by a C++ library compiled to WebAssembl
 npm install
 ```
 
-### Compiles for development
+### Compile for development
 ```
-npm run serve
+npm run dev
 ```
 
-### Compiles for production
+### Compile for production
 ```
 npm run build
 ```

@@ -1,4 +1,5 @@
-import { isNumeric, filterNumeric, wrapAngle } from '../../src/helpers/NumericHelpers';
+import { describe, expect, it } from 'vitest';
+import { isNumeric, filterNumeric, wrapAngle } from '@/helpers/NumericHelpers';
 
 describe('isNumeric tests', () => { // the tests container
     it('should return true on valid numbers', () => { // the single test
