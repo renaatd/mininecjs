@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import { onBeforeMount, ref } from 'vue'
-/*
 import _mininec from '@/models/Mininec'
 
+/*
 import BasicInfo from '@/components/BasicInfo.vue'
 import FarField from '@/components/FarField.vue'
 import GeometryInput from '@/components/GeometryInput.vue'
@@ -26,11 +26,9 @@ function setCalculated(newValue: boolean): void {
 }
 
 onBeforeMount(() => {
-  /*
   _mininec.addObserverInitialized(() => { 
     mininecInitialized.value = true;
   });
-  */
 });
 </script>
 

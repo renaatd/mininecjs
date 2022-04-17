@@ -1,13 +1,13 @@
 
-var MininecJS = (() => {
-  var _scriptDir = typeof document !== 'undefined' && document.currentScript ? document.currentScript.src : undefined;
-  if (typeof __filename !== 'undefined') _scriptDir = _scriptDir || __filename;
+var Module = (() => {
+  var _scriptDir = import.meta.url;
+  
   return (
-function(MininecJS) {
-  MininecJS = MininecJS || {};
+function(Module) {
+  Module = Module || {};
 
 
-var h;h||(h=typeof MininecJS !== 'undefined' ? MininecJS : {});var aa,ba;h.ready=new Promise(function(a,b){aa=a;ba=b});var ca=Object.assign({},h),da="object"==typeof window,q="function"==typeof importScripts,ea="object"==typeof process&&"object"==typeof process.versions&&"string"==typeof process.versions.node,u="",fa,ha,ia,fs,ja,la;
+var h;h||(h=typeof Module !== 'undefined' ? Module : {});var aa,ba;h.ready=new Promise(function(a,b){aa=a;ba=b});var ca=Object.assign({},h),da="object"==typeof window,q="function"==typeof importScripts,ea="object"==typeof process&&"object"==typeof process.versions&&"string"==typeof process.versions.node,u="",fa,ha,ia,fs,ja,la;
 if(ea)u=q?require("path").dirname(u)+"/":__dirname+"/",la=()=>{ja||(fs=require("fs"),ja=require("path"))},fa=function(a,b){var c=w(a);if(c)return b?c:c.toString();la();a=ja.normalize(a);return fs.readFileSync(a,b?void 0:"utf8")},ia=a=>{a=fa(a,!0);a.buffer||(a=new Uint8Array(a));return a},ha=(a,b,c)=>{var d=w(a);d&&b(d);la();a=ja.normalize(a);fs.readFile(a,function(e,f){e?c(e):b(f.buffer)})},1<process.argv.length&&process.argv[1].replace(/\\/g,"/"),process.argv.slice(2),process.on("uncaughtException",
 function(a){throw a;}),process.on("unhandledRejection",function(a){throw a;}),h.inspect=function(){return"[Emscripten Module object]"};else if(da||q)q?u=self.location.href:"undefined"!=typeof document&&document.currentScript&&(u=document.currentScript.src),_scriptDir&&(u=_scriptDir),0!==u.indexOf("blob:")?u=u.substr(0,u.replace(/[?#].*/,"").lastIndexOf("/")+1):u="",fa=a=>{try{var b=new XMLHttpRequest;b.open("GET",a,!1);b.send(null);return b.responseText}catch(e){if(a=w(a)){b=[];for(var c=0;c<a.length;c++){var d=
 a[c];255<d&&(ma&&x("Character code "+d+" ("+String.fromCharCode(d)+")  at offset "+c+" not in 0x00-0xFF."),d&=255);b.push(String.fromCharCode(d))}return b.join("")}throw e;}},q&&(ia=a=>{try{var b=new XMLHttpRequest;b.open("GET",a,!1);b.responseType="arraybuffer";b.send(null);return new Uint8Array(b.response)}catch(c){if(a=w(a))return a;throw c;}}),ha=(a,b,c)=>{var d=new XMLHttpRequest;d.open("GET",a,!0);d.responseType="arraybuffer";d.onload=()=>{if(200==d.status||0==d.status&&d.response)b(d.response);
@@ -86,13 +86,8 @@ function gc(){function a(){if(!ec&&(ec=!0,h.calledRun=!0,!pa)){Qa(Ha);aa(h);if(h
 if(h.preInit)for("function"==typeof h.preInit&&(h.preInit=[h.preInit]);0<h.preInit.length;)h.preInit.pop()();gc();
 
 
-  return MininecJS.ready
+  return Module.ready
 }
 );
 })();
-if (typeof exports === 'object' && typeof module === 'object')
-  module.exports = MininecJS;
-else if (typeof define === 'function' && define['amd'])
-  define([], function() { return MininecJS; });
-else if (typeof exports === 'object')
-  exports["MininecJS"] = MininecJS;
+export default Module;
