@@ -2,10 +2,10 @@
 import { onBeforeMount, ref } from 'vue'
 import _mininec from '@/models/Mininec'
 
+import GeometryInput from '@/components/GeometryInput.vue'
 /*
 import BasicInfo from '@/components/BasicInfo.vue'
 import FarField from '@/components/FarField.vue'
-import GeometryInput from '@/components/GeometryInput.vue'
 import WireCurrent from '@/components/WireCurrent.vue'
 */
 
@@ -44,8 +44,8 @@ onBeforeMount(() => {
       <a class="button" :class="[calculated ? 'accent-button' : 'muted-button', {'round-button': activeTab==2}]" @click.prevent="setActive(2)">Wire current</a>&nbsp;
       <a class="button" :class="[calculated ? 'accent-button' : 'muted-button', {'round-button': activeTab==3}]" @click.prevent="setActive(3)">Far field pattern</a>&nbsp;
 
-<!--
       <GeometryInput v-show="activeTab == 0" v-on:setActive="setCalculated"/> 
+<!--
       <BasicInfo v-if="activeTab == 1" /> 
       <WireCurrent v-if="activeTab == 2" /> 
       <FarField v-if="activeTab == 3" /> 
