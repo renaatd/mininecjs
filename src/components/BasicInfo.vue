@@ -69,52 +69,49 @@
   </div>
 </template>
 
-<script lang="ts">
-  import _mininec from '@/models/Mininec';
-  import type { Source } from '@/models/Mininec';
-  import { Component, Vue } from 'vue-property-decorator';
-  import { Complex } from 'mathjs';
+<script setup lang="ts">
+import { ref } from 'vue';
+import type { Complex } from 'mathjs';
 
-  @Component
-  export default class BasicInfo extends Vue {
-    public frequency = 0.0;
-    public wavelength = 0.0;
-    public readonly mininec_version = _mininec.VERSION;
-    public noPulses = 0;
-    public noWires = 0;
-    public elapsed_fill_matrix_ms = 0;
-    public elapsed_solve_matrix_ms = 0;
-    public loadImpedances: Complex[] = [];
-    public sources: Source[] = [];
+import _mininec from '@/models/Mininec';
+import type { Source } from '@/models/Mininec';
 
-    public formatComplex(x: Complex): string {
-      let imSign = (x.im >= 0.0) ? '+' : '';
-      return x.re.toFixed(3).toString() + imSign + x.im.toFixed(3).toString() + "i";
-    }
+const frequency = ref(0.0);
+const wavelength = ref(0.0);
+const mininec_version = _mininec.VERSION;
+const noPulses = ref(0);
+const noWires = ref(0);
+const elapsed_fill_matrix_ms = ref(0);
+const elapsed_solve_matrix_ms = ref(0);
+const loadImpedances = ref<Complex[]>([]);
+const sources = ref<Source[]>([]);
 
-    public formatPolarRaw(x: Complex): string {
-      let polar = x.toPolar();
-      return "r=" + polar.r.toFixed(3).toString() + ", &#952;=" + (polar.phi * 180 / Math.PI).toFixed(1).toString() + "&deg;";
-    }
+function formatComplex(x: Complex): string {
+    let imSign = (x.im >= 0.0) ? '+' : '';
+    return x.re.toFixed(3).toString() + imSign + x.im.toFixed(3).toString() + "i";
+}
 
-    private update(): void {
-        this.wavelength = _mininec.getWavelength();
-        this.frequency = _mininec.getFrequency();
-        this.noPulses = _mininec.getNoPulses();
-        this.noWires = _mininec.getNoWires();
+function formatPolarRaw(x: Complex): string {
+    let polar = x.toPolar();
+    return "r=" + polar.r.toFixed(3).toString() + ", &#952;=" + (polar.phi * 180 / Math.PI).toFixed(1).toString() + "&deg;";
+}
 
-        let [statusOk, sources] = _mininec.getSourceCurrents();
-        this.sources = statusOk ? (sources as Source[]) : [];
-        this.loadImpedances = _mininec.getLoadImpedances();
+function update(): void {
+    wavelength.value = _mininec.getWavelength();
+    frequency.value = _mininec.getFrequency();
+    noPulses.value = _mininec.getNoPulses();
+    noWires.value = _mininec.getNoWires();
 
-        this.elapsed_fill_matrix_ms = _mininec.solveInfo.elapsed_fill_matrix_us / 1000;
-        this.elapsed_solve_matrix_ms = _mininec.solveInfo.elapsed_solve_matrix_us / 1000;
-    }
+    let [statusOk, sourcesLocal] = _mininec.getSourceCurrents();
+    sources.value = statusOk ? (sourcesLocal as Source[]) : [];
+    loadImpedances.value = _mininec.getLoadImpedances();
 
-    created():void {
-      this.update();
-    }
-  }
+    elapsed_fill_matrix_ms.value = _mininec.solveInfo.elapsed_fill_matrix_us / 1000;
+    elapsed_solve_matrix_ms.value = _mininec.solveInfo.elapsed_solve_matrix_us / 1000;
+}
+
+// on creation
+update();
 </script>
 
 <style>
