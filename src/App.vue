@@ -4,9 +4,9 @@ import _mininec from '@/models/Mininec'
 
 import BasicInfo from '@/components/BasicInfo.vue'
 import GeometryInput from '@/components/GeometryInput.vue'
+import WireCurrent from '@/components/WireCurrent.vue'
 /*
 import FarField from '@/components/FarField.vue'
-import WireCurrent from '@/components/WireCurrent.vue'
 */
 
 let mininecInitialized = ref(false);
@@ -45,8 +45,8 @@ onBeforeMount(() => {
 
       <GeometryInput v-show="activeTab == 0" v-on:setActive="setCalculated"/> 
       <BasicInfo v-if="activeTab == 1" /> 
-<!--
       <WireCurrent v-if="activeTab == 2" /> 
+<!--
       <FarField v-if="activeTab == 3" /> 
 -->
     </div>
