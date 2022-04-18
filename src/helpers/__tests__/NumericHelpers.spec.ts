@@ -2,7 +2,17 @@ import { describe, expect, it } from 'vitest';
 import { isNumeric, filterNumeric, wrapAngle } from '@/helpers/NumericHelpers';
 
 describe('isNumeric tests', () => { // the tests container
-    it('should return true on valid numbers', () => { // the single test
+    it('should return true on valid numbers', () => {
+        expect(isNumeric(0)).toBe(true);
+        expect(isNumeric(-1)).toBe(true);
+        expect(isNumeric(1)).toBe(true);
+    });
+    it('should return false on invalid numbers', () => {
+        expect(isNumeric(NaN)).toBe(false);
+        expect(isNumeric(Infinity)).toBe(false);
+        expect(isNumeric(-Infinity)).toBe(false);
+    });
+    it('should return true on valid strings', () => {
         expect(isNumeric('0')).toBe(true);
         expect(isNumeric('-1')).toBe(true);
         expect(isNumeric('1e7')).toBe(true);
@@ -10,7 +20,7 @@ describe('isNumeric tests', () => { // the tests container
         expect(isNumeric(' -.3 ')).toBe(true);
         expect(isNumeric('.3e1')).toBe(true);
     });
-    it('should return false on invalid numbers', () => {
+    it('should return false on invalid strings', () => {
         expect(isNumeric('')).toBe(false);
         expect(isNumeric(' ')).toBe(false);
         expect(isNumeric('a 0')).toBe(false);
@@ -39,7 +49,7 @@ describe('filterNumeric tests', () => {
     });
 });
 
-describe('filterNumeric tests', () => {
+describe('wrapAngle tests', () => {
     it('should not change in range ]-180,180[', () => {
         expect(wrapAngle(-179)).toBeCloseTo(-179);
         expect(wrapAngle(0)).toBeCloseTo(0);

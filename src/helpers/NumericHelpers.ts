@@ -1,9 +1,16 @@
-/** Return True if string can be converted to a valid number, false on empty string or if there are extra characters.
+/** Return True if a string/number can be converted to a finite number, false on empty string, NaN, Infinity or if there are extra characters.
     Scientific notation is accepted. Leading/trailing whitespace is ignored. */
-export function isNumeric(s: string): boolean { 
-    s = s.trim();
-    if (!s)
+export function isNumeric(s: string | number): boolean {
+    if (typeof s == 'number') {
+        // OK
+    } else if (typeof s == 'string') {
+        s = s.trim();
+        if (!s) {
+            return false;
+        }
+    } else {
         return false;
+    }
     const n = Number(s); 
     return !isNaN(n) && isFinite(n); 
 }
