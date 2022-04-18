@@ -1,6 +1,6 @@
 <template>
   <div id="geometry-input">
-    <!-- <LoadAndSave v-on:updateGeometry="updateAntenna"/> -->
+    <LoadAndSave v-on:updateGeometry="updateAntenna"/>
     <form @submit.prevent="handleSubmit">
       <label for="usernotes">User notes</label>
       <textarea id="usernotes" v-model="antenna.userNotes" placeholder="User notes for this design" rows="5"></textarea>
@@ -75,207 +75,209 @@
 </template>
 
 <script setup lang="ts">
-  import { computed, defineEmits, onBeforeMount, reactive, ref, watch } from 'vue';
-  import { Antenna, antenna as antennaOriginal } from '@/models/Antenna';
-  import _mininec from '@/models/Mininec';
-  import { checkCsvNumbers, splitCsv } from '@/helpers/CsvHelpers';
-  import { isNumeric, filterNumeric } from '@/helpers/NumericHelpers';
-  import ClickHelp from './ClickHelp.vue';
-  // import LoadAndSave from './LoadAndSave.vue';
-  import _debounce from 'lodash/debounce';
+import { computed, defineEmits, onBeforeMount, reactive, ref, watch } from 'vue';
+import { checkCsvNumbers, splitCsv } from '@/helpers/CsvHelpers';
+import { isNumeric, filterNumeric } from '@/helpers/NumericHelpers';
+import _debounce from 'lodash/debounce';
 
-  type WireDetail = {
-    segmentLength: number,
-    pulseBegin: string,
-    pulseEnd: string
+import { Antenna, antenna as antennaOriginal } from '@/models/Antenna';
+import _mininec from '@/models/Mininec';
+
+import ClickHelp from './ClickHelp.vue';
+import LoadAndSave from './LoadAndSave.vue';
+
+type WireDetail = {
+  segmentLength: number,
+  pulseBegin: string,
+  pulseEnd: string
+}
+
+const emit = defineEmits(['setActive']);
+
+// beware - antennaOriginal must not be changed directly by e.g. LoadAndSave.
+// might consider using ref(), but this changes syntax in many places
+const antenna = reactive(antennaOriginal);
+
+/* ======================================================== */
+const frequencyText = ref('');
+const wavelength = ref(0.0);
+const frequencyOk = computed(() => { return !isNaN(antenna.frequency) && antenna.frequency > 0.0; });
+
+/** Update mininec and antenna model based on frequencyText */
+function setMininecAntennaFrequency():void {
+  if (isNumeric(frequencyText.value) && Number(frequencyText.value) > 0) {
+    _mininec.setFrequency(Number(frequencyText.value));
+    antenna.frequency = _mininec.getFrequency();
+    wavelength.value = _mininec.getWavelength();
+  } else {
+    antenna.frequency = NaN;
+    wavelength.value = NaN;
   }
+}
 
-  const emit = defineEmits(['setActive']);
+function onInputFrequency(event: Event) {
+  const target = event.target as HTMLInputElement;
+  // filter non-numerical characters
+  target.value = filterNumeric(target.value);
+  // and assign it to frequencyText for updating wavelength
+  frequencyText.value = target.value
+}
 
-  // beware - antennaOriginal must not be changed directly by e.g. LoadAndSave.
-  // might consider using ref(), but this changes syntax in many places
-  const antenna = reactive(antennaOriginal);
+watch(frequencyText, () => {
+  updateCalculatedFlag(false);
+  setMininecAntennaFrequency();
+});
 
-  /* ======================================================== */
-  const frequencyText = ref('');
-  const wavelength = ref(0.0);
-  const frequencyOk = computed(() => { return !isNaN(antenna.frequency) && antenna.frequency > 0.0; });
+/* ======================================================== */
+const environment = ref('');
+const isWithGround = computed(() => { return environment.value == 'ground'; });
 
-  /** Update mininec and antenna model based on frequencyText */
-  function setMininecAntennaFrequency():void {
-    if (isNumeric(frequencyText.value) && Number(frequencyText.value) > 0) {
-      _mininec.setFrequency(Number(frequencyText.value));
-      antenna.frequency = _mininec.getFrequency();
-      wavelength.value = _mininec.getWavelength();
-    } else {
-      antenna.frequency = NaN;
-      wavelength.value = NaN;
-    }
-  }
+watch(environment, () => {
+  updateCalculatedFlag(false);
+  checkAll();
+  antenna.hasGround = isWithGround.value;
+});
 
-  function onInputFrequency(event: Event) {
-    const target = event.target as HTMLInputElement;
-    // filter non-numerical characters
-    target.value = filterNumeric(target.value);
-    // and assign it to frequencyText for updating wavelength
-    frequencyText.value = target.value
-  }
+/* ======================================================== */
+// antenna.wires contains the wires as text
+/** wire geometry split per row/field, as strings */
+const wiresParsed = computed<string[][]>(() =>  splitCsv(antenna.wires));
+/** array with per wire segmentlength, and index of first/last pulse */
+const wireDetails = ref<WireDetail[]>([]);
+const wiresStatus = ref('');
+const wiresOk = ref(false);
+const debouncedCheckAll = _debounce(checkAll, 500);
 
-  watch(frequencyText, () => {
-    updateCalculatedFlag(false);
-    setMininecAntennaFrequency();
-  });
+/** Update mininec model and all status messages */
+function checkAll(): void {
+  setMininecGeometry();
+  setMininecSources();
+  setMininecLoads();
+  setMininecAntennaFrequency();
+}
 
-  /* ======================================================== */
-  const environment = ref('');
-  const isWithGround = computed(() => { return environment.value == 'ground'; });
-
-  watch(environment, () => {
-    updateCalculatedFlag(false);
-    checkAll();
-    antenna.hasGround = isWithGround.value;
-  });
-
-  /* ======================================================== */
-  // antenna.wires contains the wires as text
-  /** wire geometry split per row/field, as strings */
-  const wiresParsed = computed<string[][]>(() =>  splitCsv(antenna.wires));
-  /** array with per wire segmentlength, and index of first/last pulse */
-  const wireDetails = ref<WireDetail[]>([]);
-  const wiresStatus = ref('');
-  const wiresOk = ref(false);
-  const debouncedCheckAll = _debounce(checkAll, 500);
-
-  /** Update mininec model and all status messages */
-  function checkAll(): void {
-    setMininecGeometry();
-    setMininecSources();
-    setMininecLoads();
-    setMininecAntennaFrequency();
-  }
-
-  /** Set mininec geometry according to antenna.wires / isWithGround, and check if everything is OK  */
-  function setMininecGeometry(): void {
-    wireDetails.value = [];
-    [wiresOk.value, wiresStatus.value] = checkCsvNumbers(wiresParsed.value, 8);
+/** Set mininec geometry according to antenna.wires / isWithGround, and check if everything is OK  */
+function setMininecGeometry(): void {
+  wireDetails.value = [];
+  [wiresOk.value, wiresStatus.value] = checkCsvNumbers(wiresParsed.value, 8);
+  if (wiresOk.value) {
+    let wiresAsNumbers = wiresParsed.value.map(line => line.map(val => Number(val)));
+    [wiresOk.value, wiresStatus.value] = _mininec.setGeometry(isWithGround.value, wiresAsNumbers);
     if (wiresOk.value) {
-      let wiresAsNumbers = wiresParsed.value.map(line => line.map(val => Number(val)));
-      [wiresOk.value, wiresStatus.value] = _mininec.setGeometry(isWithGround.value, wiresAsNumbers);
-      if (wiresOk.value) {
-        let noWires = _mininec.getNoWires();
-        let noPulses = _mininec.getNoPulses();
-        wiresStatus.value = "OK, geometry has " + noWires.toString() + " wires and " + noPulses.toString() + " pulses.";
+      let noWires = _mininec.getNoWires();
+      let noPulses = _mininec.getNoPulses();
+      wiresStatus.value = "OK, geometry has " + noWires.toString() + " wires and " + noPulses.toString() + " pulses.";
 
-        wireDetails.value = Array(noWires).fill(0).map((_, index): WireDetail => {
-          let pulses = _mininec.getPulses(index);
-          if (pulses.length < 2)
-            return { segmentLength: 0, pulseBegin: 'error', pulseEnd: 'error'};
-          let lastElement = pulses.slice(-1)[0];
-          return {
-            segmentLength: _mininec.getSegmentLength(index),
-            pulseBegin: (pulses[0] >= 0) ? 'connected' : 'open',
-            pulseEnd: (lastElement >= 0) ? 'connected' : 'open'
-          };
-        })
-      }
+      wireDetails.value = Array(noWires).fill(0).map((_, index): WireDetail => {
+        let pulses = _mininec.getPulses(index);
+        if (pulses.length < 2)
+          return { segmentLength: 0, pulseBegin: 'error', pulseEnd: 'error'};
+        let lastElement = pulses.slice(-1)[0];
+        return {
+          segmentLength: _mininec.getSegmentLength(index),
+          pulseBegin: (pulses[0] >= 0) ? 'connected' : 'open',
+          pulseEnd: (lastElement >= 0) ? 'connected' : 'open'
+        };
+      })
     }
   }
+}
 
-  watch(() => antenna.wires, () => {
-    updateCalculatedFlag(false);
-    wiresStatus.value = "(you're typing)";
-    wiresOk.value = false;
-    debouncedCheckAll();
-  });
+watch(() => antenna.wires, () => {
+  updateCalculatedFlag(false);
+  wiresStatus.value = "(you're typing)";
+  wiresOk.value = false;
+  debouncedCheckAll();
+});
 
-  /* ======================================================== */
-  const sourcesStatus = ref('');
-  const sourcesOk = ref(false);
-  const sourcesParsed = computed<string[][]>(() => { return splitCsv(antenna.sources); });
-  const debouncedCheckSources = _debounce(setMininecSources, 500);
+/* ======================================================== */
+const sourcesStatus = ref('');
+const sourcesOk = ref(false);
+const sourcesParsed = computed<string[][]>(() => { return splitCsv(antenna.sources); });
+const debouncedCheckSources = _debounce(setMininecSources, 500);
 
-  function setMininecSources(): void {
-    if (sourcesParsed.value.length < 1) {
-      sourcesOk.value = false;
-      sourcesStatus.value = "Error, there must be at least 1 source !";
-      return;
-    }
-
-    [sourcesOk.value, sourcesStatus.value] = checkCsvNumbers(sourcesParsed.value, 4);
-    if (wiresOk.value && sourcesOk.value) {
-      let sourcesAsNumbers = sourcesParsed.value.map(line => line.map(val => Number(val)));
-      [sourcesOk.value, sourcesStatus.value] = _mininec.setSources(sourcesAsNumbers);
-    }
-  }
-
-  watch(() => antenna.sources, () => {
-    updateCalculatedFlag(false);
-    sourcesStatus.value = "(you're typing)";
+function setMininecSources(): void {
+  if (sourcesParsed.value.length < 1) {
     sourcesOk.value = false;
-    debouncedCheckSources();
-  });
-
-  /* ======================================================== */
-  const loadsStatus = ref('');
-  const loadsOk = ref(false);
-  const loadsParsed = computed<string[][]>(() => { return splitCsv(antenna.loads); });
-  const debouncedCheckLoads = _debounce(setMininecLoads, 500);
-
-  function setMininecLoads(): void {
-    [loadsOk.value, loadsStatus.value] = checkCsvNumbers(loadsParsed.value);
-    if (wiresOk.value && loadsOk.value) {
-      let loadsAsNumbers = loadsParsed.value.map(line => line.map(val => Number(val)));
-      [loadsOk.value, loadsStatus.value] = _mininec.setLoads(loadsAsNumbers);
-    }
+    sourcesStatus.value = "Error, there must be at least 1 source !";
+    return;
   }
 
-  watch(() => antenna.loads, () => {
-    updateCalculatedFlag(false);
-    loadsStatus.value = "(you're typing)";
-    loadsOk.value = false;
-    debouncedCheckLoads();
-  });
-
-  /* ======================================================== */
-  /** true if mininec impedance calculations are done */
-  const calculated = ref(false);
-  const calculatedStatus = ref('');
-
-  const  allInputsOk = computed(() => { return frequencyOk.value && wiresOk.value && sourcesOk.value && loadsOk.value; });
-
-  function handleSubmit(): void {
-    if (!allInputsOk.value) 
-      return;
-
-    let [success, message] = _mininec.solve();
-    updateCalculatedFlag(success, message);
+  [sourcesOk.value, sourcesStatus.value] = checkCsvNumbers(sourcesParsed.value, 4);
+  if (wiresOk.value && sourcesOk.value) {
+    let sourcesAsNumbers = sourcesParsed.value.map(line => line.map(val => Number(val)));
+    [sourcesOk.value, sourcesStatus.value] = _mininec.setSources(sourcesAsNumbers);
   }
+}
 
-  /* ======================================================== */
-  function updateAntenna(newValue: Antenna): void {
-    antenna.copyFrom(newValue);
-    setGuiStringsFromAntenna();
-    updateCalculatedFlag(false);
+watch(() => antenna.sources, () => {
+  updateCalculatedFlag(false);
+  sourcesStatus.value = "(you're typing)";
+  sourcesOk.value = false;
+  debouncedCheckSources();
+});
+
+/* ======================================================== */
+const loadsStatus = ref('');
+const loadsOk = ref(false);
+const loadsParsed = computed<string[][]>(() => { return splitCsv(antenna.loads); });
+const debouncedCheckLoads = _debounce(setMininecLoads, 500);
+
+function setMininecLoads(): void {
+  [loadsOk.value, loadsStatus.value] = checkCsvNumbers(loadsParsed.value);
+  if (wiresOk.value && loadsOk.value) {
+    let loadsAsNumbers = loadsParsed.value.map(line => line.map(val => Number(val)));
+    [loadsOk.value, loadsStatus.value] = _mininec.setLoads(loadsAsNumbers);
   }
+}
 
-  function setGuiStringsFromAntenna(): void {
-    frequencyText.value = antenna.frequency.toString();
-    // note: setting environment.value triggers watcher, calls checkAll, does set antenna.frequency based on frequencyText -> first set frequency before setting environment
-    environment.value = antenna.hasGround ? 'ground' : 'free';
-  }
+watch(() => antenna.loads, () => {
+  updateCalculatedFlag(false);
+  loadsStatus.value = "(you're typing)";
+  loadsOk.value = false;
+  debouncedCheckLoads();
+});
 
-  /** Update calculated flag and status message, emit to parent */
-  function updateCalculatedFlag(newValue: boolean, newMessage = ''): void {
-    calculatedStatus.value = newMessage;
-    calculated.value = newValue;
-    emit('setActive', newValue);
-  }
+/* ======================================================== */
+/** true if mininec impedance calculations are done */
+const calculated = ref(false);
+const calculatedStatus = ref('');
 
-  onBeforeMount(() => {
-    // Note: MiniNEC engine must already be initialized. If not, this.checkAll() might cause a null dereference
-    setGuiStringsFromAntenna();
-    checkAll();
-  });
+const  allInputsOk = computed(() => { return frequencyOk.value && wiresOk.value && sourcesOk.value && loadsOk.value; });
+
+function handleSubmit(): void {
+  if (!allInputsOk.value) 
+    return;
+
+  let [success, message] = _mininec.solve();
+  updateCalculatedFlag(success, message);
+}
+
+/* ======================================================== */
+function updateAntenna(newValue: Antenna): void {
+  antenna.copyFrom(newValue);
+  setGuiStringsFromAntenna();
+  updateCalculatedFlag(false);
+}
+
+function setGuiStringsFromAntenna(): void {
+  frequencyText.value = antenna.frequency.toString();
+  // note: setting environment.value triggers watcher, calls checkAll, does set antenna.frequency based on frequencyText -> first set frequency before setting environment
+  environment.value = antenna.hasGround ? 'ground' : 'free';
+}
+
+/** Update calculated flag and status message, emit to parent */
+function updateCalculatedFlag(newValue: boolean, newMessage = ''): void {
+  calculatedStatus.value = newMessage;
+  calculated.value = newValue;
+  emit('setActive', newValue);
+}
+
+onBeforeMount(() => {
+  // Note: MiniNEC engine must already be initialized. If not, this.checkAll() might cause a null dereference
+  setGuiStringsFromAntenna();
+  checkAll();
+});
 </script>
 
 <style scoped>
