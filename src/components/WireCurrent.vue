@@ -7,7 +7,7 @@
     </select>
 
     <div v-if="activeWire < noWires">
-      <canvas ref="chart" width="700" height="450"></canvas>
+      <canvas ref="chartRef" width="700" height="450"></canvas>
       <p>Dots correspond with pulses. Pulses are placed between segments.</p>
       <table class="striped-table">
         <thead>
@@ -28,174 +28,182 @@
   </div>
 </template>
 
-<script lang="ts">
+<script setup lang="ts">
+import { computed, onMounted, onUpdated, ref } from 'vue';
+import type { Complex } from 'mathjs';
+import { Chart, Legend, LinearScale, LineElement, PointElement, ScatterController, Title } from 'chart.js';
+import type { ChartConfiguration } from 'chart.js';
+
 import _mininec from '@/models/Mininec';
 import type { PulseCurrent } from '@/models/Mininec';
-import { Component, Vue } from 'vue-property-decorator';
-import { Complex } from 'mathjs';
-import { Chart, ChartConfiguration, Legend, LinearScale, LineElement, PointElement, ScatterController, Title } from 'chart.js';
 
-@Component
-export default class WireCurrent extends Vue {
-    public noWires = 0;
-    public pulseCurrents: PulseCurrent[][] = [];
-    public activeWire = 0;
-    private chart: Chart | null = null;
+const noWires = ref(0);
+const pulseCurrents = ref<PulseCurrent[][]>([]);
+const activeWire = ref(0);
 
-    get wireSelections(): {index: number, text: string}[] {
-      return Array(this.noWires).fill(1).map((_,i) => { return {"index": i, "text": 'Wire ' + (i+1).toString()}; });
-    }
+/** chart.js Chart object, defined at first update */
+let chart: Chart | null = null;
+/** reference to the DOM element chart */
+const chartRef = ref(null);
 
-    public formatComplex(x: Complex): string {
-      let imSign = (x.im >= 0.0) ? '+' : '';
-      return x.re.toFixed(3).toString() + imSign + x.im.toFixed(3).toString() + "i";
-    }
+/** array of index/description for the wire selection dropdown */
+const wireSelections = computed<{index: number, text: string}[]>(() => {
+    return Array(noWires.value).fill(1).map((_,i) => { return {"index": i, "text": 'Wire ' + (i+1).toString()}; });
+});
 
-    public formatPolarRaw(x: Complex): string {
-      let polar = x.toPolar();
-      return "r=" + polar.r.toFixed(3).toString() + ", &#952;=" + (polar.phi * 180 / Math.PI).toFixed(1).toString() + "&deg;";
-    }
+function formatComplex(x: Complex): string {
+    let imSign = (x.im >= 0.0) ? '+' : '';
+    return x.re.toFixed(3).toString() + imSign + x.im.toFixed(3).toString() + "i";
+}
 
-    public formatPulse(pulse: number): number|string 
-    {
-      if (pulse == -1)
+function formatPolarRaw(x: Complex): string {
+    let polar = x.toPolar();
+    return "r=" + polar.r.toFixed(3).toString() + ", &#952;=" + (polar.phi * 180 / Math.PI).toFixed(1).toString() + "&deg;";
+}
+
+function formatPulse(pulse: number): number|string 
+{
+    if (pulse == -1) {
         return "open";
-      if (pulse == -2)
+    }
+    if (pulse == -2) {
         return "junction";
-      return pulse;
+    }
+    return pulse;
+}
+
+/** update noWires and pulseCurrents on creation */
+function onSolutionChanged(): void {
+    noWires.value = _mininec.getNoWires();
+    if (activeWire.value >= noWires.value) {
+        activeWire.value = 0;
     }
 
-    private onSolutionChanged(): void {
-      this.noWires = _mininec.getNoWires();
-      if (this.activeWire >= this.noWires)
-        this.activeWire = 0;
-      this.setPulseCurrents();
-    }
+    // trigger reactive update array
+    pulseCurrents.value = [];
+    for (let i=0; i < noWires.value; i++) {
+        let [statusOk, pulseCurrentsLocal] = _mininec.getPulseCurrents(i);
+        (pulseCurrents.value)[i] = statusOk ? (pulseCurrentsLocal as PulseCurrent[]) : [];
 
-    private setPulseCurrents(): void {
-      // trigger reactive update array
-      this.pulseCurrents = [];
-      for (let i=0; i < this.noWires; i++) {
-        let [statusOk, pulseCurrents] = _mininec.getPulseCurrents(i);
-        this.pulseCurrents[i] = statusOk ? (pulseCurrents as PulseCurrent[]) : [];
-
-        if (!statusOk)
-          console.log("Wire ", i, ": can't get current, error message: ", (pulseCurrents as string));
-      }
-    }
-
-    private createChartIfNeeded(): void {
-      if (this.chart)
-        return;
-
-      if (!this.$refs.chart) {
-        console.log("Error: can't create chart, no reference");
-        return;
-      }
-      
-      let ctx = (this.$refs.chart as HTMLCanvasElement).getContext('2d');
-      if (ctx == null) {
-        console.log("Error: can't create chart, no canvas");
-        return;
-      }
-
-      const data = {
-        datasets: [
-          {
-            label: 'real',
-            data: [],
-            backgroundColor: 'rgb(31, 119, 180)',
-            borderColor: 'rgb(31, 119, 180)',
-            stepped: 'middle'
-          },
-          {
-            label: 'imag',
-            data: [],
-            backgroundColor: 'rgb(255, 127, 14)',
-            borderColor: 'rgb(255, 127, 14)',
-            stepped: 'middle'
-          },
-          {
-            label: 'total',
-            data: [],
-            backgroundColor: 'rgb(44, 160, 44)',
-            borderColor: 'rgb(44, 160, 44)',
-            stepped: 'middle'
-          },
-        ],
-      };
-
-      const config = {
-        type: 'line',
-        data: data,
-        options: {
-          animation: false,
-          plugins: {
-            legend: {
-              position: "top"
-            },
-            title: {
-              display: true,
-              text: 'Current in wire',
-            },
-          },
-          scales: {
-            x: {
-              type: 'linear',
-              position: 'bottom',
-              min: 0,
-              max: 1,
-              title: {
-                display: true,
-                text: 'relative position along wire'
-              }
-            },
-            y: {
-              title: {
-                display: true,
-                text: 'current (A)'
-              }
-            }
-          }
+        if (!statusOk) {
+            console.log("Wire ", i, ": can't get current, error message: ", (pulseCurrentsLocal as string));
         }
-      };
-
-      this.chart = new Chart(ctx, config as ChartConfiguration);
-    }
-
-    private updateChart(): void {
-      this.createChartIfNeeded();
-      if (!this.chart) {
-        return;
-      }
-
-      let currents = this.pulseCurrents[this.activeWire];
-      let noPoints = currents.length;
-      let current_real_xy = currents.map((x, index) => { return {x: index / (noPoints-1), y: x.current.re}; });
-      let current_imag_xy = currents.map((x, index) => { return {x: index / (noPoints-1), y: x.current.im}; });
-      let current_total_xy = currents.map((x, index) => { return {x: index / (noPoints-1), y: x.current.toPolar().r}; });
-
-      this.chart.data.datasets[0].data = current_real_xy;
-      this.chart.data.datasets[1].data = current_imag_xy;
-      this.chart.data.datasets[2].data = current_total_xy;
-
-      if (this.chart.options.plugins && this.chart.options.plugins.title)
-        this.chart.options.plugins.title.text = "Current in wire " + (this.activeWire+1).toString();
-
-      this.chart.update();
-    }
-
-    mounted(): void {
-      Chart.register(ScatterController, LinearScale, PointElement, LineElement, Legend, Title);
-      this.onSolutionChanged();
-      // can't call createChartIfNeeded here, can't find reference. Also not possible in beforeUpdate()
-    }
-
-    updated(): void {
-      // Update chart when the DOM is ready, don't try earlier.
-      this.updateChart();
     }
 }
+
+function createChartIfNeeded(): void {
+  if (chart)
+    return;
+
+  if (!chartRef.value) {
+    console.log("Error: can't create chart, no reference");
+    return;
+  }
+  
+  let ctx = (chartRef.value as HTMLCanvasElement).getContext('2d');
+  if (ctx == null) {
+    console.log("Error: can't create chart, no canvas");
+    return;
+  }
+
+  const data = {
+    datasets: [
+      {
+        label: 'real',
+        data: [],
+        backgroundColor: 'rgb(31, 119, 180)',
+        borderColor: 'rgb(31, 119, 180)',
+        stepped: 'middle'
+      },
+      {
+        label: 'imag',
+        data: [],
+        backgroundColor: 'rgb(255, 127, 14)',
+        borderColor: 'rgb(255, 127, 14)',
+        stepped: 'middle'
+      },
+      {
+        label: 'total',
+        data: [],
+        backgroundColor: 'rgb(44, 160, 44)',
+        borderColor: 'rgb(44, 160, 44)',
+        stepped: 'middle'
+      },
+    ],
+  };
+
+  const config = {
+    type: 'line',
+    data: data,
+    options: {
+      animation: false,
+      plugins: {
+        legend: {
+          position: "top"
+        },
+        title: {
+          display: true,
+          text: 'Current in wire',
+        },
+      },
+      scales: {
+        x: {
+          type: 'linear',
+          position: 'bottom',
+          min: 0,
+          max: 1,
+          title: {
+            display: true,
+            text: 'relative position along wire'
+          }
+        },
+        y: {
+          title: {
+            display: true,
+            text: 'current (A)'
+          }
+        }
+      }
+    }
+  };
+
+  chart = new Chart(ctx, config as ChartConfiguration);
+}
+
+/** update chart object */
+function updateChart(): void {
+    createChartIfNeeded();
+    if (!chart) {
+        return;
+    }
+
+    let currents = pulseCurrents.value[activeWire.value];
+    let noPoints = currents.length;
+    let current_real_xy = currents.map((x, index) => { return {x: index / (noPoints-1), y: x.current.re}; });
+    let current_imag_xy = currents.map((x, index) => { return {x: index / (noPoints-1), y: x.current.im}; });
+    let current_total_xy = currents.map((x, index) => { return {x: index / (noPoints-1), y: x.current.toPolar().r}; });
+
+    chart.data.datasets[0].data = current_real_xy;
+    chart.data.datasets[1].data = current_imag_xy;
+    chart.data.datasets[2].data = current_total_xy;
+
+    if (chart.options.plugins && chart.options.plugins.title) {
+        chart.options.plugins.title.text = "Current in wire " + (activeWire.value+1).toString();
+    }
+
+    chart.update();
+}
+
+onMounted(() => {
+    Chart.register(ScatterController, LinearScale, PointElement, LineElement, Legend, Title);
+    onSolutionChanged();
+    // can't call createChartIfNeeded here, can't find reference. Also not possible in beforeUpdate()
+});
+
+onUpdated(() => {
+    // Update chart when the DOM is ready, don't try earlier.
+    updateChart();
+});
 </script>
 
 <style>

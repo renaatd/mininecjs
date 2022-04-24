@@ -1,5 +1,6 @@
 import MininNECModule from '@/assets/mininecjs.js'; 
-import { Complex, complex } from 'mathjs';
+import { complex } from 'mathjs';
+import type { Complex } from 'mathjs';
 
 type Observer = (() => void);
 

@@ -1,33 +1,33 @@
-<template lang="html">
-  <div id="polarplot">
-      <svg ref="polar" preserveAspectRatio="xMidYMid meet" :viewBox="viewBox" >
-          <g id="radii" class="axis" v-html="radiiScale"></g>
-          <g id="angles" class="axis" v-html="angleScale"></g>
-          <g id="aid" :transform="`translate(${radius+130} ${radius/2})`" v-html="aidDiagram"></g>
-          <g>
-              <text :x="radius+20" :y="-radius/2-30">Gain in function of {{ isElevation ? "elevation" : "azimuth" }}</text>
+<template>
+    <div id="polarplot">
+        <svg ref="polar" preserveAspectRatio="xMidYMid meet" :viewBox="viewBox" >
+            <g id="radii" class="axis" v-html="radiiScale"></g>
+            <g id="angles" class="axis" v-html="angleScale"></g>
+            <g id="aid" :transform="`translate(${radius+130} ${radius/2})`" v-html="aidDiagram"></g>
+            <g>
+                <text :x="radius+20" :y="-radius/2-30">Gain in function of {{ isElevation ? "elevation" : "azimuth" }}</text>
 
-              <line :x1="radius+20" :y1="-radius/2-5" :x2="radius+50" :y2="-radius/2-5" class="line" style="stroke:rgb(31,119,180);"></line>
-              <text :x="radius+60" :y="-radius/2">horizontal</text>
-              
-              <line :x1="radius+20" :y1="-radius/2+10" :x2="radius+50" :y2="-radius/2+10" class="line" style="stroke:rgb(255,127,14);"></line>
-              <text :x="radius+60" :y="-radius/2+15">vertical</text>
+                <line :x1="radius+20" :y1="-radius/2-5" :x2="radius+50" :y2="-radius/2-5" class="line" style="stroke:rgb(31,119,180);"></line>
+                <text :x="radius+60" :y="-radius/2">horizontal</text>
+                
+                <line :x1="radius+20" :y1="-radius/2+10" :x2="radius+50" :y2="-radius/2+10" class="line" style="stroke:rgb(255,127,14);"></line>
+                <text :x="radius+60" :y="-radius/2+15">vertical</text>
 
-              <line :x1="radius+20" :y1="-radius/2+25" :x2="radius+50" :y2="-radius/2+25" class="line" style="stroke:rgb(44,160,44);"></line>
-              <text :x="radius+60" :y="-radius/2+30">total</text>
-          </g>
-          <path class="line" style="stroke:rgb(31,119,180);" :d="line[0]"></path>
-          <path class="line" style="stroke:rgb(255,127,14);" :d="line[1]"></path>
-          <path class="line" style="stroke:rgb(44,160,44);" :d="line[2]"></path>
-      </svg>
-  </div>
+                <line :x1="radius+20" :y1="-radius/2+25" :x2="radius+50" :y2="-radius/2+25" class="line" style="stroke:rgb(44,160,44);"></line>
+                <text :x="radius+60" :y="-radius/2+30">total</text>
+            </g>
+            <path class="line" style="stroke:rgb(31,119,180);" :d="line[0]"></path>
+            <path class="line" style="stroke:rgb(255,127,14);" :d="line[1]"></path>
+            <path class="line" style="stroke:rgb(44,160,44);" :d="line[2]"></path>
+        </svg>
+    </div>
 </template>
 
 
-<script lang="ts">
+<script setup lang="ts">
 // Layout based on example polarplot here: https://bl.ocks.org/mbostock/4583749
 //
-// DOM manipulation using VueJS based on these:
+// DOM manipulation using VueJS based on:
 // https://macwright.com/2016/10/11/d3-and-react.html
 // https://medium.com/@lambrospd/5-simple-rules-to-data-visualization-with-vue-js-and-d3-js-f6b2bd6a1d40
 //
@@ -36,187 +36,175 @@
 // * Use as much as possible computed properties for e.g. the path -> easier to maintain
 // * Use $ref + trigger on mounted for init stuff. Try to avoid it for things that change - would require watches for updating
 
+import { computed } from "vue";
 import { create } from "d3-selection";
 import { range } from "d3-array";
-import { ScaleLinear, scaleLinear } from "d3-scale";
+import { scaleLinear } from "d3-scale";
+import type { ScaleLinear } from "d3-scale";
 import { lineRadial } from "d3-shape";
-import { Component, Prop, Vue } from 'vue-property-decorator';
 
-@Component
-export default class PolarPlot extends Vue {
-    @Prop()
-    readonly isElevation!: boolean;
+const props = defineProps<{
+    isElevation: boolean,
+    angles: number[],
+    values: [number[], number[], number[]],
+    maxValue: number,
+    azimuth: number,
+    width: number,
+    height: number,
+    radiiSuffix: string
+}>();
 
-    @Prop() 
-    readonly angles!: number[];
+/** SVG viewbox dimensions */
+const viewBox = computed<string>(() => { return `${-props.width/3} ${-props.height/2} ${props.width} ${props.height}`; });
 
-    @Prop() 
-    readonly values!: [number[], number[], number[]];
+/** max radius of the circles in the SVG plot  */
+const radius = Math.min(props.width, props.height) / 2 - 30;
 
-    @Prop()
-    readonly maxValue!: number;
+/** Scale from dBi to radius in the SVG plot */
+const scaleR: ScaleLinear<number,number> = scaleLinear()
+    .clamp(true)
+    .domain([props.maxValue - 40, props.maxValue])
+    .range([0, radius])
+    .nice(); 
 
-    @Prop()
-    readonly azimuth!: number;
+/** path of the horizontal/vertical/total line */
+const line = computed<[string|undefined, string|undefined, string|undefined]>(() => {
+    if (props.angles.length == 0)
+        return ["", "", ""];
 
-    @Prop()
-    readonly width!: number;
+    let horizontal: [number,number][] = props.angles.map((element, index) => { return [element, props.values[0][index]]});
+    let vertical: [number,number][] = props.angles.map((element, index) => { return [element, props.values[1][index]]});
+    let total: [number,number][] = props.angles.map((element, index) => { return [element, props.values[2][index]]});
 
-    @Prop()
-    readonly height!: number;
+    // lineRadial: angle 0 = top, angle pi/2 = right
+    let lineGenerator = lineRadial()
+        .radius((d) => { return scaleR(d[1]); })
+        .angle((d) => { 
+            // lineRadial has 0 at top, pi/2 at right
+            // our azimuth and elevation plots have 0 at right and 90 at top
+            return -d[0] * Math.PI / 180.0 + Math.PI / 2; 
+        });
+    return [
+        lineGenerator([...horizontal, horizontal[0]]) ?? "",
+        lineGenerator([...vertical, vertical[0]]) ?? "",
+        lineGenerator([...total, total[0]]) ?? "",
+    ];
+});
 
-    @Prop()
-    readonly radiiSuffix!: string;
+/** SVG for the radii circle + amplitude scale */
+const radiiScale = computed<string>(() => {
+    let gr = create("g");
+    let grSub = gr.selectAll("g")
+        .data(scaleR.ticks(5).slice(1))
+    .enter().append("g");
 
-    readonly radius = Math.min(this.width, this.height) / 2 - 30;
+    grSub.append("circle")
+        .attr("r", scaleR);
 
-    get viewBox(): string { return `${-this.width/3} ${-this.height/2} ${this.width} ${this.height}`; }
+    grSub.append("text")
+        .attr("y", (d) => { return -scaleR(d) - 4; })
+        .attr("transform", "rotate(15)")
+        .style("text-anchor", "middle")
+        .text((d) => { return d + props.radiiSuffix; });
 
-    get scaleR(): ScaleLinear<number,number> { 
-        return scaleLinear()
-            .clamp(true)
-            .domain([this.maxValue - 40, this.maxValue])
-            .range([0, this.radius])
-            .nice(); 
-    }
+    return gr.html();
+});
 
-    get line(): [string|null, string|null, string|null] {
-        if (this.angles.length == 0)
-            return ["", "", ""];
+/** SVG for the spokes + angle scale */
+const angleScale = computed<string>(() => {
+    // for all angles: draw horizontal line + text right from it, and rotate counter-clockwise the correct number of degrees
+    var ga = create("g");
+    let gaSub = ga.selectAll("g")
+        .data(range(-150, 181, 30))
+    .enter().append("g")
+        .attr("transform", function(d) { return "rotate(" + -d + ")"; });
 
-        let horizontal: [number,number][] = this.angles.map((element, index) => { return [element, this.values[0][index]]});
-        let vertical: [number,number][] = this.angles.map((element, index) => { return [element, this.values[1][index]]});
-        let total: [number,number][] = this.angles.map((element, index) => { return [element, this.values[2][index]]});
-        
-        // lineRadial: angle 0 = top, angle pi/2 = right
-        let lineGenerator = lineRadial()
-            .radius((d) => { return this.scaleR(d[1]); })
-            .angle((d) => { 
-                // lineRadial has 0 at top, pi/2 at right
-                // our azimuth and elevation plots have 0 at right and 90 at top
-                return -d[0] * Math.PI / 180.0 + Math.PI / 2; 
-            });
-        return [
-            lineGenerator([...horizontal, horizontal[0]]),
-            lineGenerator([...vertical, vertical[0]]),
-            lineGenerator([...total, total[0]]),
-        ];
-    }
+    gaSub.append("line")
+        .attr("x2", radius);
 
-    get radiiScale(): string {
-        let gr = create("g");
-        let grSub = gr.selectAll("g")
-            .data(this.scaleR.ticks(5).slice(1))
-        .enter().append("g");
+    // if needed: rotate text another 180°, around its start coordinate (this.radius+6,0)
+    gaSub.append("text")
+        .attr("x", radius + 6)
+        .attr("dy", ".35em")
+        // text at top/bottom is centered, text at left side is right aligned
+        .style("text-anchor", (d) => { 
+            return d < -90 || d > 90 ? "end" 
+                : ((d == -90 || d == 90) ? "middle" 
+                : "start"); 
+            })
+        // rotate text back to have it horizontal
+        .attr("transform", (d) => { return `rotate(${d} ${(radius + 6)},0)`; })
+        .text((d) => { 
+            return d + "°"; 
+        });
+    return ga.html();
+});
 
-        grSub.append("circle")
-            .attr("r", this.scaleR);
+const aidDiagram = computed<string>(() => {
+    if (!props.isElevation)
+        return "";
 
-        grSub.append("text")
-            .attr("y", (d) => { return -this.scaleR(d) - 4; })
-            .attr("transform", "rotate(15)")
-            .style("text-anchor", "middle")
-            .text((d) => { return d + this.radiiSuffix; });
-
-        return gr.html();
-    }
-
-    get angleScale(): string {
-        // for all angles: draw horizontal line + text right from it, and rotate counter-clockwise the correct number of degrees
-        var ga = create("g");
-        let gaSub = ga.selectAll("g")
-            .data(range(-150, 181, 30))
-        .enter().append("g")
-            .attr("transform", function(d) { return "rotate(" + -d + ")"; });
-
-        gaSub.append("line")
-            .attr("x2", this.radius);
-
-        // if needed: rotate text another 180°, around its start coordinate (this.radius+6,0)
-        gaSub.append("text")
-            .attr("x", this.radius + 6)
-            .attr("dy", ".35em")
-            // text at top/bottom is centered, text at left side is right aligned
-            .style("text-anchor", (d) => { 
-                return d < -90 || d > 90 ? "end" 
-                  : ((d == -90 || d == 90) ? "middle" 
-                  : "start"); 
-                })
-            // rotate text back to have it horizontal
-            .attr("transform", (d) => { return `rotate(${d} ${(this.radius + 6)},0)`; })
-            .text((d) => { 
-                return d + "°"; 
-            });
-        return ga.html();
-    }
-
-    get aidDiagram(): string {
-        if (!this.isElevation)
-            return "";
-
-        let gr = create("g");
-        gr.append("text")
-            .attr("x", "0")
-            .attr("y", "-110")
-            .style("text-anchor", "middle")
-            .text("top view");
-        gr.append("line")
-            .attr("y1", "90")
-            .attr("y2", "-90")
-            .style("stroke", "black");
-        gr.append("line")
-            .attr("x1", "90")
-            .attr("x2", "-90")
-            .style("stroke", "black");
-        gr.append("line")
-            .attr("x1", "90")
-            .attr("x2", "-90")
-            .style("stroke", "red")
-            .attr("transform", `rotate(${-this.azimuth})`);
-        gr.append("text")
-            .attr("x", "80")
-            .attr("y", "-10")
-            .style("font", "10px sans-serif")
-            .text("x");
-        gr.append("text")
-            .attr("y", "-80")
-            .attr("x", "-10")
-            .style("font", "10px sans-serif")
-            .text("y");
-        gr.append("text")
-            .attr("x", "95")
-            .attr("dy", ".35em")
-            .style("stroke", "red")
-            .style("font", "10px sans-serif")
-            .attr("transform", `rotate(${-this.azimuth}) rotate(${this.azimuth} 98,0)`)
-            .text("0");
-        gr.append("text")
-            .attr("x", "-100")
-            .attr("dy", ".35em")
-            .style("stroke", "red")
-            .style("text-anchor", "middle")
-            .style("font", "10px sans-serif")
-            .attr("transform", `rotate(${-this.azimuth}) rotate(${this.azimuth} -100,0)`)
-            .text("180");
-        return gr.html();
-    }
-}
+    let gr = create("g");
+    gr.append("text")
+        .attr("x", "0")
+        .attr("y", "-110")
+        .style("text-anchor", "middle")
+        .text("top view");
+    gr.append("line")
+        .attr("y1", "90")
+        .attr("y2", "-90")
+        .style("stroke", "black");
+    gr.append("line")
+        .attr("x1", "90")
+        .attr("x2", "-90")
+        .style("stroke", "black");
+    gr.append("line")
+        .attr("x1", "90")
+        .attr("x2", "-90")
+        .style("stroke", "red")
+        .attr("transform", `rotate(${-props.azimuth})`);
+    gr.append("text")
+        .attr("x", "80")
+        .attr("y", "-10")
+        .style("font", "10px sans-serif")
+        .text("x");
+    gr.append("text")
+        .attr("y", "-80")
+        .attr("x", "-10")
+        .style("font", "10px sans-serif")
+        .text("y");
+    gr.append("text")
+        .attr("x", "95")
+        .attr("dy", ".35em")
+        .style("stroke", "red")
+        .style("font", "10px sans-serif")
+        .attr("transform", `rotate(${-props.azimuth}) rotate(${props.azimuth} 98,0)`)
+        .text("0");
+    gr.append("text")
+        .attr("x", "-100")
+        .attr("dy", ".35em")
+        .style("stroke", "red")
+        .style("text-anchor", "middle")
+        .style("font", "10px sans-serif")
+        .attr("transform", `rotate(${-props.azimuth}) rotate(${props.azimuth} -100,0)`)
+        .text("180");
+    return gr.html();
+});
 </script>
 
 <style lang="css" scoped>
-/* to make a scoped selector deep: use >>> - see https://vue-loader.vuejs.org/guide/scoped-css.html#mixing-local-and-global-styles */
-.axis >>> text {
+.axis :deep(text) {
   font: 10px sans-serif;
 }
 
-.axis >>> line,
-.axis >>> circle {
+.axis :deep(line),
+.axis :deep(circle) {
   fill: none;
   stroke: #777;
   stroke-dasharray: 1,4;
 }
 
-.axis :last-of-type >>> circle {
+.axis :last-of-type :deep(circle) {
   stroke: #333;
   stroke-dasharray: none;
 }

@@ -1,3 +1,4 @@
+import { beforeAll, describe, expect, test } from 'vitest';
 import mininec from '@/models/Mininec';
 
 describe('mininec tests', () => {
