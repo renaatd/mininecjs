@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="">
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width,initial-scale=1.0">
+    <link rel="icon" type="image/png" sizes="32x32" href="favicon-32x32.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="favicon-16x16.png">
+    <link rel="stylesheet" type="text/css" href="main.min.css">
+    <title>MiniNEC JS</title>
+  </head>
+  <body>
+  <div class="medium-container">
+    <nav class="margin-top margin-bottom" style="font-size: 1.25rem">
+      | <a href="index.html">MiniNEC JS</a> | <a href="about.html">About</a> |
+    </nav>
+
+    <h1>MiniNEC JS</h1>
+    <p>MiniNEC JS is a free antenna modelling program for the browser. It is a JavaScript/WebAssembly port of MiniNEC.</p>
+    <p>The calculation engine is based on a MiniNEC release labelled "MiniNEC3, NOSC code 822, JCL change 9", dated 26 Nov 1986.
+      It has been ported to C++ and is compiled to WebAssembly using <a href="https://emscripten.org/">Emscripten</a>.
+      The UI is written in TypeScript and uses the <a href="https://vuejs.org/">VueJS</a> framework for reactivity and
+      <a href="https://taniarascia.github.io/primitive/">Primitive UI</a> for layout.
+    </p>
+
+    <h1>History</h1>
+    <p>MiniNEC was written by John Rockway and James Logan of the Naval Operations Sea Centre, San Diego, US in the early eighties. In contrast with NEC2, MiniNEC was 
+      written in BASIC and ran on home computers. The first public release was in 1982, and it was one of earliest antenna modelling programs accessible to hobbyists.</p>
+    <p>In later years NEC2 and its derivatives grew more popular. NEC2 is a heavier code, written in FORTRAN, with a more advanced grounding model. 
+      EZNec and 4NEC2, modern ports of NEC2 with more user friendly interfaces, made NEC2 the most popular choice for antenna modelling.</p>
+    <p>MiniNEC is still a very competent code and for some antenna modelling problems, e.g. antennas with tapered wires, the better choice.
+      The code is also surprisingly small: only 1600 lines of BASIC. But the original user interface feels now very outdated, and BASIC interpreters are no longer
+      by default installed on computers, making it complicated to run MiniNEC.</p>
+
+    <h1>Differences</h1>
+    <p>MiniNEC JS uses the same algorithms as MiniNEC, and gives in most cases very similar results. Here's a list of known differences:</p>
+    <ul>
+        <li>All calculations are in IEEE754 double precision. MiniNEC uses single precision in the floating format of the BASIC environment.
+          Many BASIC environments use non-standard formats with worse accuracy than IEEE754.</li>
+        <li>S-domain loads work correctly. MiniNEC contains a scaling bug causing incorrect results for S-domain loads.</li>
+        <li>The limit on the number of wires and pulses have been increased to 500.</li>
+    </ul>
+
+    <h1>Missing features</h1>
+    <p>Some features are not implemented yet:</p>
+    <ul>
+        <li>Far field in absolute values (V/m)</li>
+        <li>Far field with multiple ground types, heights or ground conductors</li>
+        <li>Near field</li>
+    </ul>
+
+    <h1>Links</h1>
+    <dl>
+      <dt><a href="http://www.w8io.com/mininec.htm">MiniNEC preservation site</a></dt>
+      <dd>MiniNEC source code, background info and links to documentation</dd>
+      <dt><a href="https://www.eznec.com/">EZNEC</a></dt>
+      <dd>EZNEC is free (formerly commercial) antenna modelling software for Microsoft Windows based on NEC2.</dd>
+      <dt><a href="https://www.qsl.net/4nec2/">4NEC2</a></dt>
+      <dd>4NEC2 is a free GUI / frontend for NEC2 and NEC4 running on Microsoft Windows.</dd>
+    </dl>
+
+    <h1>Source code</h1>
+    <p>The source code of the UI is available on <a href="https://github.com/renaatd/mininecjs">GitHub</a>.</p>
+    <p>The source code of the calculation engine needs some love and care, and isn't yet available.</p>
+
+    <h1>Contact</h1>
+    <p>If you have a bug to report or feature to request, please use <a href="https://github.com/renaatd/mininecjs/issues">GitHub issues</a>. For other requests, you can contact the author at renaatd@fastmail.com</p>
+
+  </div>
+  </body>
+</html>
