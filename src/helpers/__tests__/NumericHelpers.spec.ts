@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { isNumeric, filterNumeric, wrapAngle } from '@/helpers/NumericHelpers';
+import { isNumeric, filterNumeric, filterPositiveNumeric, wrapAngle } from '@/helpers/NumericHelpers';
 
 describe('isNumeric tests', () => { // the tests container
     it('should return true on valid numbers', () => {
@@ -30,6 +30,26 @@ describe('isNumeric tests', () => { // the tests container
         expect(isNumeric('.3e')).toBe(false);
     });
 });
+
+describe('filterPositiveNumeric tests', () => {
+    it('should return numbers unmodified', () => {
+        expect(filterPositiveNumeric('123.4')).toBe('123.4');
+        expect(filterPositiveNumeric('456')).toBe('456');
+    });
+    it('should filter all spaces', () => {
+        expect(filterPositiveNumeric(' 1 2 ')).toBe('12');
+    });
+    it('should remove double .', () => {
+        expect(filterPositiveNumeric('123.4.5.6')).toBe('123.4');
+    });
+    it('should remove all characters', () => {
+        expect(filterPositiveNumeric('abc123e4z')).toBe('1234');
+    });
+    it('should remove -', () => {
+        expect(filterPositiveNumeric('-1')).toBe('1');
+    });
+});
+
 describe('filterNumeric tests', () => {
     it('should return numbers unmodified', () => {
         expect(filterNumeric('123.4')).toBe('123.4');
@@ -44,8 +64,14 @@ describe('filterNumeric tests', () => {
     it('should remove all characters', () => {
         expect(filterNumeric('abc123e4z')).toBe('1234');
     });
-    it('should remove -', () => {
-        expect(filterNumeric('-1')).toBe('1');
+    it('should keep -', () => {
+        expect(filterNumeric('-1')).toBe('-1');
+    });
+    it('should filter incorrect -', () => {
+        expect(filterNumeric('12-3')).toBe('12');
+    });
+    it('should accept single -', () => {
+        expect(filterNumeric('-')).toBe('-');
     });
 });
 

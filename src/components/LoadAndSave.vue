@@ -12,7 +12,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, defineEmits  } from 'vue';
+import { ref } from 'vue';
 import { antenna, Antenna } from '@/models/Antenna';
 import { examples } from '@/models/Examples';
 

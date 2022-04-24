@@ -77,7 +77,7 @@
 <script setup lang="ts">
 import { computed, defineEmits, onBeforeMount, reactive, ref, watch } from 'vue';
 import { checkCsvNumbers, splitCsv } from '@/helpers/CsvHelpers';
-import { isNumeric, filterNumeric } from '@/helpers/NumericHelpers';
+import { isNumeric, filterPositiveNumeric } from '@/helpers/NumericHelpers';
 import _debounce from 'lodash/debounce';
 
 import { Antenna, antenna as antennaOriginal } from '@/models/Antenna';
@@ -118,7 +118,7 @@ function setMininecAntennaFrequency():void {
 function onInputFrequency(event: Event) {
   const target = event.target as HTMLInputElement;
   // filter non-numerical characters
-  target.value = filterNumeric(target.value);
+  target.value = filterPositiveNumeric(target.value);
   // and assign it to frequencyText for updating wavelength
   frequencyText.value = target.value
 }
