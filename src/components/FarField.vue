@@ -12,11 +12,11 @@
       <div class="flex-row" v-if="antenna.hasGround && !antenna.hasIdealGround">
         <div class="flex-small">
           <label for="eps">Relative dielectric constant (&epsilon;<sub>r</sub>):</label>
-          <input id="eps" inputmode="decimal" :value="epsilonRText" @input="event => onInputPositiveNumeric(event, ref(epsilonRText))">
+          <input id="eps" type="text" inputmode="decimal" v-model="epsilonRText">
         </div>
         <div class="flex-small">
           <label for="conductivty">Conductivity (S/m):</label>
-          <input id="conductivity" inputmode="decimal" :value="conductivityText" @input="event => onInputPositiveNumeric(event, ref(conductivityText))">
+          <input id="conductivity" type="text" inputmode="decimal" v-model="conductivityText">
         </div>
       </div>
 
@@ -37,12 +37,12 @@
       <div v-if="isElevationPlot">
         <label for="azimuth_slider">Azimuth (&deg;):</label>
         <input type="range" min="-180" max="180" class="slider" id="azimuth_slider" v-model="azimuthText">
-        <input id="azimuth" type="text" :value="azimuthText" @input="onInputAzimuth($event)">
+        <input id="azimuth" type="text" inputmode="numeric" :value="azimuthText" @input="onInputAzimuth($event)">
       </div>
       <div v-if="!isElevationPlot">
         <label for="elevation_slider">Elevation (&deg;):</label>
         <input type="range" :min="elevationMin" max="90" class="slider" id="elevation_slider" v-model="elevationText">
-        <input id="elevation" type="text" :value="elevationText" @input="onInputElevation($event)">
+        <input id="elevation" type="text" inputmode="numeric" :value="elevationText" @input="onInputElevation($event)">
       </div>
     </form>
 
@@ -92,7 +92,7 @@
 <script setup lang="ts">
 import { computed, onBeforeMount, reactive, ref, watch } from 'vue';
 import type { Ref } from 'vue';
-import { isNumeric, filterNumeric, filterPositiveNumeric, wrapAngle } from '@/helpers/NumericHelpers';
+import { isNumeric, filterNumeric, wrapAngle } from '@/helpers/NumericHelpers';
 
 import { antenna as antennaOriginal } from '@/models/Antenna';
 import _mininec from '@/models/Mininec';
@@ -130,15 +130,8 @@ function onInputNumericRange(event: Event, field: Ref<string | number>, minValue
     field.value = filtered;
 }
 
-/** filter input events on text field to accept only positive numbers */
-function onInputPositiveNumeric(event: Event, field: Ref<string | number>) {
-    const target = event.target as HTMLInputElement;
-    target.value = filterPositiveNumeric(target.value);
-    field.value = String(target.value);
-}
-
 function formatDbi(x: number): string {
-    return ("00000000" + x.toFixed(3).toString()).slice(-8);
+    return ("        " + x.toFixed(3).toString()).slice(-8);
     // ES2017: x.toFixed(3).toString().padStart(8);
 }
 
@@ -172,12 +165,12 @@ watch(groundType, () => { antenna.hasIdealGround = groundType.value == 'ideal'; 
 /* ======================================================== */
 const epsilonRText = ref('');
 const epsilonROK = computed(() => { return !antenna.hasGround || antenna.hasIdealGround || (isNumeric(epsilonRText.value) && antenna.epsilonR > 0); });
-watch(epsilonRText, () => { antenna.epsilonR = Number(epsilonRText.value); });
+watch(() => epsilonRText.value, () => { antenna.epsilonR = Number(epsilonRText.value); });
 
 /* ======================================================== */
 const conductivityText = ref('');
 const conductivityOK = computed(() => { return !antenna.hasGround || antenna.hasIdealGround || (isNumeric(conductivityText.value) && antenna.conductivity > 0); });
-watch(conductivityText, () => { antenna.conductivity = Number(conductivityText.value); });
+watch(() => conductivityText.value, () => { antenna.conductivity = Number(conductivityText.value); });
 
 const errorMessage = ref('');
 
