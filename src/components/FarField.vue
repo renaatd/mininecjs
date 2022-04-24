@@ -44,6 +44,8 @@
         <input type="range" :min="elevationMin" max="90" class="slider" id="elevation_slider" v-model="elevationText">
         <input id="elevation" type="text" inputmode="numeric" :value="elevationText" @input="onInputElevation($event)">
       </div>
+
+      <label for="table_checkbox"><input type="checkbox" id="table_checkbox" v-model="showTable"/> Show table</label>
     </form>
 
     <div v-if="allInputsOk && errorMessage == ''">
@@ -59,7 +61,7 @@
         Max gain at {{ isElevationPlot ? "elevation" : "azimuth" }} {{ maxAngle.toFixed(0) }}&deg;
       </pre>
 
-      <table class="striped-table">
+      <table v-if="showTable" class="striped-table">
         <thead>
             <tr>
               <th class="text-right">elevation (&deg;)</th>
@@ -172,6 +174,10 @@ const conductivityText = ref('');
 const conductivityOK = computed(() => { return !antenna.hasGround || antenna.hasIdealGround || (isNumeric(conductivityText.value) && antenna.conductivity > 0); });
 watch(() => conductivityText.value, () => { antenna.conductivity = Number(conductivityText.value); });
 
+/* ======================================================== */
+const showTable = ref(false);
+
+/* ======================================================== */
 const errorMessage = ref('');
 
 /** true if all inputs are valid */

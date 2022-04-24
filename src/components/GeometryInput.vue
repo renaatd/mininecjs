@@ -75,7 +75,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, defineEmits, onBeforeMount, reactive, ref, watch } from 'vue';
+import { computed, onBeforeMount, reactive, ref, watch } from 'vue';
 import { checkCsvNumbers, splitCsv } from '@/helpers/CsvHelpers';
 import { isNumeric, filterPositiveNumeric } from '@/helpers/NumericHelpers';
 import _debounce from 'lodash/debounce';
