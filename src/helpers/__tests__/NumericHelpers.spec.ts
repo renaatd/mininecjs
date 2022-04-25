@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { isNumeric, filterNumeric, filterPositiveNumeric, wrapAngle } from '@/helpers/NumericHelpers';
+import { Statistics } from '@/helpers/NumericHelpers';
 
 describe('isNumeric tests', () => { // the tests container
     it('should return true on valid numbers', () => {
@@ -96,5 +97,50 @@ describe('wrapAngle tests', () => {
         expect(wrapAngle(181)).toBeCloseTo(-179);
         expect(wrapAngle(360)).toBeCloseTo(0);
         expect(wrapAngle(720)).toBeCloseTo(0);
+    });
+});
+
+describe('Statistics tests', () => {
+    it('should return NaN when no data', () => {
+        const dut = new Statistics();
+
+        expect(dut.count()).toBe(0);
+        expect(dut.min()).toBe(NaN);
+        expect(dut.mean()).toBe(NaN);
+        expect(dut.max()).toBe(NaN);
+        expect(dut.stddev()).toBe(NaN);
+        expect(dut.sample_stddev()).toBe(NaN);
+        expect(dut.variance()).toBe(NaN);
+        expect(dut.sample_variance()).toBe(NaN);
+    });
+
+    it('should return NaN on stddwhen one sample', () => {
+        const dut = new Statistics();
+        dut.update(1000);
+
+        expect(dut.count()).toBe(1);
+        expect(dut.min()).toBe(1000);
+        expect(dut.mean()).toBe(1000);
+        expect(dut.max()).toBe(1000);
+        expect(dut.stddev()).toBe(NaN);
+        expect(dut.sample_stddev()).toBe(NaN);
+        expect(dut.variance()).toBe(NaN);
+        expect(dut.sample_variance()).toBe(NaN);
+    });
+
+    it('should return as expected on 2 samples', () => {
+        const dut = new Statistics();
+        // add a huge offset to test Wellerford's algorithm
+        dut.update(1e9 + 1);
+        dut.update(1e9 + 3);
+
+        expect(dut.count()).toBe(2);
+        expect(dut.min()).toBe(1e9 + 1);
+        expect(dut.mean()).toBe(1e9 + 2);
+        expect(dut.max()).toBe(1e9 + 3);
+        expect(dut.stddev()).toBeCloseTo(1, 10);
+        expect(dut.sample_stddev()).toBeCloseTo(Math.sqrt(2), 10);
+        expect(dut.variance()).toBeCloseTo(1, 10);
+        expect(dut.sample_variance()).toBeCloseTo(2, 10);
     });
 });

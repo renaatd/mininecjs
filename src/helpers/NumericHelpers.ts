@@ -38,3 +38,51 @@ export function wrapAngle(angle: number): number {
     // javascript % gives the remainder, is negative for negative input -> do ((x % n) + n) % n
     return -((((-angle+180) % 360) + 360) % 360 - 180)
 }
+
+/** Calculate statistics incrementally using Welford's algorithm */
+export class Statistics {
+    private _count = 0;
+    private _mean = 0;
+    private _m2 = 0;
+    private _min = 0;
+    private _max = 0;
+
+    update(value : number) {
+        // use Welford's algorithm to keep errors low when there is a large offset
+        if (this._count == 0) {
+            this._min = value;
+            this._max = value;
+        } else {
+            if (value < this._min)
+                this._min = value;
+            if (value > this._max)
+                this._max = value;
+        }
+
+        this._count++;
+
+        const delta = value - this._mean;
+        this._mean += delta / this._count;
+
+        const delta2 = value - this._mean;
+        this._m2 += delta * delta2;
+    }
+
+    count() { return this._count; }
+
+    min() { return (this._count == 0) ? NaN : this._min; }
+    mean() { return (this._count == 0) ? NaN : this._mean; }
+    max() { return (this._count == 0) ? NaN : this._max; }
+
+    /** variance of a population */
+    variance() { return (this._count < 2) ? NaN : (this._m2 / this._count); }
+    /** standard deviation of a population */
+    stddev() { return Math.sqrt(this.variance()); }
+
+    /** variance of a sample from a population */
+    sample_variance() { return (this._count < 2) ? NaN : (this._m2 / (this._count - 1)); }
+    /** standard deviation of a sample of a population */
+    sample_stddev() { return Math.sqrt(this.sample_variance()); }
+
+    toString() { return `min(${this.min()}), mean(${this.mean()}), max(${this.max()}), stddev(${this.stddev()}), sample_stddev(${this.sample_stddev()})`; }
+}
