@@ -2,11 +2,11 @@
   <div id="loadandsave">
     <form @submit.prevent="">
         <label for="loadFile" class="button">Load file<input id="loadFile" type="file" @change="loadFromFile" class="hide" accept=".json"></label>&nbsp;
-        <button @click.prevent="save">Save file</button>&nbsp;
+        <button type="button" @click.prevent="save">Save file</button>&nbsp;
         <select v-model="selected_example" class="select-with-button">
             <option v-for="option in examples" v-bind:key="option.name" v-bind:value="option.name">{{ option.name }}</option>
         </select>&nbsp;
-        <button @click.prevent="loadExample">Load example</button>
+        <button type="button" @click.prevent="loadExample">Load example</button>
     </form>
   </div>
 </template>
