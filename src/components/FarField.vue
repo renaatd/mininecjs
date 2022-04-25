@@ -95,6 +95,7 @@
 import { computed, onBeforeMount, reactive, ref, watch } from 'vue';
 import type { Ref } from 'vue';
 import { isNumeric, filterNumeric, wrapAngle } from '@/helpers/NumericHelpers';
+import _throttle from 'lodash/throttle';
 
 import { antenna as antennaOriginal } from '@/models/Antenna';
 import _mininec from '@/models/Mininec';
@@ -198,7 +199,10 @@ const totalRange = computed(() => { return getRange(totalValues.value); });
 
 const maxAngle = computed(() => { return angles.value[totalValues.value.indexOf(totalRange.value[1])] ?? NaN; });
 
+/** When playing with parameters: update plot at most every 100 ms, but certainly at end, when parameters no longer change */
+const throttledGetFarFieldDbi = _throttle(getFarFieldDbi, 100, {leading: false, trailing: true});
 function getFarFieldDbi(): void {
+  // performance measurement on large antenna (> 450 pulses) with step angle 0.1°: approx 200 ms for _mininec, < 40 ms for sorting/filtering
   // trigger reactive update array
   farFieldDbi.length = 0;
   errorMessage.value = '';
@@ -279,7 +283,7 @@ watch([() => antenna.conductivity, () => antenna.epsilonR, () => antenna.hasIdea
 );
 
 watch([plotType, stepAngleText, elevation, azimuth], 
-    () => getFarFieldDbi()
+    () => throttledGetFarFieldDbi()
 );
 
 onBeforeMount(() => {
