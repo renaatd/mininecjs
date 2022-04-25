@@ -84,5 +84,5 @@ export class Statistics {
     /** standard deviation of a sample of a population */
     sample_stddev() { return Math.sqrt(this.sample_variance()); }
 
-    toString() { return `min(${this.min()}), mean(${this.mean()}), max(${this.max()}), stddev(${this.stddev()}), sample_stddev(${this.sample_stddev()})`; }
+    toString() { return `count(${this.count()}) min(${this.min()}), mean(${this.mean()}), max(${this.max()}), stddev(${this.stddev()}), sample_stddev(${this.sample_stddev()})`; }
 }
