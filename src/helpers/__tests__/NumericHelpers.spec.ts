@@ -143,4 +143,12 @@ describe('Statistics tests', () => {
         expect(dut.variance()).toBeCloseTo(1, 10);
         expect(dut.sample_variance()).toBeCloseTo(2, 10);
     });
+    it('should accept a formatter', () => {
+        const dut = new Statistics();
+        dut.update(1);
+        dut.update(2);
+        dut.update(2);
+
+        expect(dut.toString(x => x.toFixed(2))).contains("mean(1.67)");
+    });
 });
