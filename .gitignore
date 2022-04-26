@@ -27,4 +27,6 @@ coverage
 *.sln
 *.sw?
 
-old/*
+examples/*
+various/*
+deploy.*
