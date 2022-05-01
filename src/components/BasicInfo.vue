@@ -5,6 +5,8 @@
       <thead> <tr> <th>Parameter</th> <th>Value</th> <th>Unit</th> </tr> </thead>
       <tbody>
         <tr> <td>MininecJS engine</td> <td>{{ mininec_version }}</td> <td> </td></tr>
+        <tr> <td>MininecJS UI git hash</td> <td>{{ ui_git_hash }}</td> <td> </td></tr>
+        <tr> <td>MininecJS UI build date</td> <td>{{ ui_build_date }}</td> <td> </td></tr>
         <tr> <td>Time to fill impedance matrix</td> <td>{{ elapsed_fill_matrix_ms.toFixed(0) }}</td> <td>ms</td></tr>
         <tr> <td>Time to solve equations</td> <td>{{ elapsed_solve_matrix_ms.toFixed(0) }}</td> <td>ms</td> </tr>
       </tbody>
@@ -76,9 +78,12 @@ import type { Complex } from 'mathjs';
 import _mininec from '@/models/Mininec';
 import type { Source } from '@/models/Mininec';
 
+const ui_build_date = import.meta.env.VITE_UI_BUILD_DATE;
+const ui_git_hash = import.meta.env.VITE_UI_GIT_HASH;
+const mininec_version = _mininec.VERSION;
+
 const frequency = ref(0.0);
 const wavelength = ref(0.0);
-const mininec_version = _mininec.VERSION;
 const noPulses = ref(0);
 const noWires = ref(0);
 const elapsed_fill_matrix_ms = ref(0);
