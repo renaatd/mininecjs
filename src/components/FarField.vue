@@ -50,7 +50,7 @@
 
     <div v-if="allInputsOk && errorMessage == ''">
       <PolarPlot v-bind:isElevation="isElevationPlot" 
-        v-bind:angles="angles" v-bind:values="[horizontalValues, verticalValues, totalValues]" v-bind:maxValue="maxFieldDbi" v-bind:azimuth="Number(azimuthText)"
+        v-bind:angles_values="angles_values" v-bind:maxValue="maxFieldDbi" v-bind:azimuth="Number(azimuthText)"
         radiiSuffix=" dBi"
         :width="800" :height="400"/>
 
@@ -188,10 +188,11 @@ const allInputsOk = computed(() => { return epsilonROK.value && conductivityOK.v
 const farFieldDbi = reactive<FarFieldDbiElevation[]>([]);
 const maxFieldDbi = ref(-999);
 
-const horizontalValues = computed(() => { return farFieldDbi.map(x => x.horizontal); });
-const verticalValues = computed(() => { return farFieldDbi.map(x => x.vertical); });
-const totalValues = computed(() => { return farFieldDbi.map(x => x.total); });
-const angles = computed(() => { return isElevationPlot.value ? farFieldDbi.map(x => x.elevation) : farFieldDbi.map(x => x.azimuth); });
+const horizontalValues = ref<number[]>([]);
+const verticalValues = ref<number[]>([]);
+const totalValues = ref<number[]>([]);
+const angles = ref<number[]>([]);
+const angles_values = ref<[number[], number[], number[], number[]]>([[],[],[],[]]);
 
 const horizontalRange = computed(() => { return getRange(horizontalValues.value); });
 const verticalRange = computed(() => { return getRange(verticalValues.value); });
@@ -200,15 +201,37 @@ const totalRange = computed(() => { return getRange(totalValues.value); });
 const maxAngle = computed(() => { return angles.value[totalValues.value.indexOf(totalRange.value[1])] ?? NaN; });
 
 /** When playing with parameters: update plot at most every 100 ms, but certainly at end, when parameters no longer change */
-const throttledGetFarFieldDbi = _throttle(getFarFieldDbi, 100, {leading: false, trailing: true});
-function getFarFieldDbi(): void {
+const throttledUpdateFarFieldValues = _throttle(updateFarFieldValues, 100, {leading: false, trailing: true});
+
+/** update FarFieldDbi and the derived variables at once */
+function updateFarFieldValues() {
+  const rawFarFieldDbi = getFarFieldDbi();
+
+  // Updating the derived values here and creating one composed angles_values avoids triggering 2 updates of PolarPlot
+  // When calculating angles/horizontal/vertical/total here, but passing [angles, ...] to PolarPlot, there were each time 2 updates.
+  horizontalValues.value = rawFarFieldDbi.map(x => x.horizontal);
+  verticalValues.value = rawFarFieldDbi.map(x => x.vertical);
+  totalValues.value = rawFarFieldDbi.map(x => x.total);
+  angles.value = isElevationPlot.value ? rawFarFieldDbi.map(x => x.elevation) : rawFarFieldDbi.map(x => x.azimuth);
+
+  angles_values.value = [angles.value, horizontalValues.value, verticalValues.value, totalValues.value];
+
+  const maxValue = Math.max(...totalValues.value);
+  if (maxValue > maxFieldDbi.value)
+    maxFieldDbi.value = maxValue;
+
+  // only store the data in a reactive<> at the very end, to keep calculations as fast as possible
+  // replace contents farfieldDbi: first clear data, followed by push(... new_data), or splice(0, x.length, ...new_data)
+  farFieldDbi.splice(0, farFieldDbi.length, ... rawFarFieldDbi);
+}
+
+function getFarFieldDbi(): FarFieldDbiElevation[] {
   // performance measurement on large antenna (> 450 pulses) with step angle 0.1°: approx 200 ms for _mininec, < 40 ms for sorting/filtering
   // trigger reactive update array
-  farFieldDbi.length = 0;
   errorMessage.value = '';
 
   if (!allInputsOk.value) {
-    return;
+    return [];
   }
 
   if (antenna.hasGround) {
@@ -221,7 +244,7 @@ function getFarFieldDbi(): void {
       [statusOk, message] = _mininec.setGroundMedia(antenna.epsilonR, antenna.conductivity);
     if (!statusOk) {
       errorMessage.value = "SetGroundMedia error: " + message;
-      return;
+      return [];
     }
   } 
 
@@ -244,26 +267,24 @@ function getFarFieldDbi(): void {
 
   if (!statusOk) {
     errorMessage.value = result as string;
-    return;
+    return [];
   }
-  // ugly hack to replace contents farfieldDbi: first clear data, followed by push(... new_data). Could also do splice(0, x.length, ...new_data)
-  farFieldDbi.push (... (result as FarFieldDbi[]).map(x => { return {
-    elevation: wrapAngle(90 - x.zenith),
-    azimuth: wrapAngle(x.azimuth),
-    horizontal: x.horizontal,
-    vertical: x.vertical,
-    total: x.total
-  } as FarFieldDbiElevation}).sort((a, b) => { 
-    const diffElevation = a.elevation - b.elevation;
-    if (diffElevation == 0)
-      return a.azimuth - b.azimuth;
-    return diffElevation;
-  }) );
 
-  let totalValues = farFieldDbi.map(x => x.total);
-  const maxValue = Math.max(...totalValues);
-  if (maxValue > maxFieldDbi.value)
-    maxFieldDbi.value = maxValue;
+  const sortedConvertedResult = (result as FarFieldDbi[])
+    .map(x => { return {
+      elevation: wrapAngle(90 - x.zenith),
+      azimuth: wrapAngle(x.azimuth),
+      horizontal: x.horizontal,
+      vertical: x.vertical,
+      total: x.total
+    } as FarFieldDbiElevation})
+    .sort((a, b) => { 
+      const diffElevation = a.elevation - b.elevation;
+      if (diffElevation == 0)
+        return a.azimuth - b.azimuth;
+      return diffElevation;
+    });
+  return sortedConvertedResult;
 }
 
 /** Return min and max value in an array */
@@ -275,7 +296,7 @@ function getRange(values: number[]) {
 
 function onSolutionChanged() {
     maxFieldDbi.value = -999;
-    getFarFieldDbi();
+    updateFarFieldValues();
 }
 
 watch([() => antenna.conductivity, () => antenna.epsilonR, () => antenna.hasIdealGround], 
@@ -283,7 +304,7 @@ watch([() => antenna.conductivity, () => antenna.epsilonR, () => antenna.hasIdea
 );
 
 watch([plotType, stepAngleText, elevation, azimuth], 
-    () => throttledGetFarFieldDbi()
+    () => throttledUpdateFarFieldValues()
 );
 
 onBeforeMount(() => {

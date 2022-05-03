@@ -45,8 +45,8 @@ import { lineRadial } from "d3-shape";
 
 const props = defineProps<{
     isElevation: boolean,
-    angles: number[],
-    values: [number[], number[], number[]],
+    /** angles, horizontal, vertical, total. Combined in one array to avoid multiple calls to computed() if sth changes */
+    angles_values: [number[], number[], number[], number[]],
     maxValue: number,
     azimuth: number,
     width: number,
@@ -69,12 +69,18 @@ const scaleR: ScaleLinear<number,number> = scaleLinear()
 
 /** path of the horizontal/vertical/total line */
 const line = computed<[string|undefined, string|undefined, string|undefined]>(() => {
-    if (props.angles.length == 0)
+    // no angles -> stop
+    if (props.angles_values[0].length == 0)
         return ["", "", ""];
 
-    let horizontal: [number,number][] = props.angles.map((element, index) => { return [element, props.values[0][index]]});
-    let vertical: [number,number][] = props.angles.map((element, index) => { return [element, props.values[1][index]]});
-    let total: [number,number][] = props.angles.map((element, index) => { return [element, props.values[2][index]]});
+    // First converting the values to simple arrays before doing the mappings reduces the total time for this function from ca 55 ms to 38 ms
+    const angles = props.angles_values[0];
+    const horizontal = props.angles_values[1];
+    const vertical = props.angles_values[2];
+    const total = props.angles_values[3];
+    const horizontalMapped: [number,number][] = angles.map((element, index) => { return [element, horizontal[index]]});
+    const verticalMapped: [number,number][] = angles.map((element, index) => { return [element, vertical[index]]});
+    const totalMapped: [number,number][] = angles.map((element, index) => { return [element, total[index]]});
 
     // lineRadial: angle 0 = top, angle pi/2 = right
     let lineGenerator = lineRadial()
@@ -85,9 +91,9 @@ const line = computed<[string|undefined, string|undefined, string|undefined]>(()
             return -d[0] * Math.PI / 180.0 + Math.PI / 2; 
         });
     return [
-        lineGenerator([...horizontal, horizontal[0]]) ?? "",
-        lineGenerator([...vertical, vertical[0]]) ?? "",
-        lineGenerator([...total, total[0]]) ?? "",
+        lineGenerator([...horizontalMapped, horizontalMapped[0]]) ?? "",
+        lineGenerator([...verticalMapped, verticalMapped[0]]) ?? "",
+        lineGenerator([...totalMapped, totalMapped[0]]) ?? "",
     ];
 });
 
