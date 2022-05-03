@@ -188,17 +188,12 @@ const allInputsOk = computed(() => { return epsilonROK.value && conductivityOK.v
 const farFieldDbi = reactive<FarFieldDbiElevation[]>([]);
 const maxFieldDbi = ref(-999);
 
-const horizontalValues = ref<number[]>([]);
-const verticalValues = ref<number[]>([]);
-const totalValues = ref<number[]>([]);
-const angles = ref<number[]>([]);
 const angles_values = ref<[number[], number[], number[], number[]]>([[],[],[],[]]);
 
-const horizontalRange = computed(() => { return getRange(horizontalValues.value); });
-const verticalRange = computed(() => { return getRange(verticalValues.value); });
-const totalRange = computed(() => { return getRange(totalValues.value); });
-
-const maxAngle = computed(() => { return angles.value[totalValues.value.indexOf(totalRange.value[1])] ?? NaN; });
+const horizontalRange = ref<number[]>([]);
+const verticalRange = ref<number[]>([]);
+const totalRange = ref<number[]>([]);
+const maxAngle = ref(NaN);
 
 /** When playing with parameters: update plot at most every 100 ms, but certainly at end, when parameters no longer change */
 const throttledUpdateFarFieldValues = _throttle(updateFarFieldValues, 100, {leading: false, trailing: true});
@@ -209,16 +204,20 @@ function updateFarFieldValues() {
 
   // Updating the derived values here and creating one composed angles_values avoids triggering 2 updates of PolarPlot
   // When calculating angles/horizontal/vertical/total here, but passing [angles, ...] to PolarPlot, there were each time 2 updates.
-  horizontalValues.value = rawFarFieldDbi.map(x => x.horizontal);
-  verticalValues.value = rawFarFieldDbi.map(x => x.vertical);
-  totalValues.value = rawFarFieldDbi.map(x => x.total);
-  angles.value = isElevationPlot.value ? rawFarFieldDbi.map(x => x.elevation) : rawFarFieldDbi.map(x => x.azimuth);
+  const horizontalValues = rawFarFieldDbi.map(x => x.horizontal);
+  const verticalValues = rawFarFieldDbi.map(x => x.vertical);
+  const totalValues = rawFarFieldDbi.map(x => x.total);
+  const angles = isElevationPlot.value ? rawFarFieldDbi.map(x => x.elevation) : rawFarFieldDbi.map(x => x.azimuth);
+  angles_values.value = [angles, horizontalValues, verticalValues, totalValues];
 
-  angles_values.value = [angles.value, horizontalValues.value, verticalValues.value, totalValues.value];
-
-  const maxValue = Math.max(...totalValues.value);
+  const maxValue = Math.max(...totalValues);
   if (maxValue > maxFieldDbi.value)
     maxFieldDbi.value = maxValue;
+
+  horizontalRange.value = getRange(horizontalValues);
+  verticalRange.value = getRange(verticalValues);
+  totalRange.value = getRange(totalValues);
+  maxAngle.value = angles[totalValues.indexOf(totalRange.value[1])] ?? NaN;
 
   // only store the data in a reactive<> at the very end, to keep calculations as fast as possible
   // replace contents farfieldDbi: first clear data, followed by push(... new_data), or splice(0, x.length, ...new_data)
